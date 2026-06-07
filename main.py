@@ -15,6 +15,9 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 
+with open("system_prompt.txt", "r") as file:
+    prompt = file.read()
+
 transport_params = {
     "webrtc": lambda: TransportParams(
         audio_in_enabled=True,
@@ -33,12 +36,12 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         compute_type="int8",
         device="auto",
         model=Model.SMALL,
-        
     )
 
     llm = OLLamaLLMService(settings=OLLamaLLMService.Settings(
         model="gemma4:e2b",
-        temperature=0.3
+        temperature=0.3,
+        system_instruction=prompt
     ))
 
     context = LLMContext()
