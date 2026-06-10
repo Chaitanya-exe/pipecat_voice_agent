@@ -43,7 +43,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         settings=DeepgramSTTSettings(
-            model="base",
+            model="enhanced",
             language="hi"
         )
     )
