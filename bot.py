@@ -1,10 +1,13 @@
 import os
 from loguru import logger
+from dotenv import load_dotenv
 
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.services.ollama.llm import OLLamaLLMService
 from pipecat.services.whisper.stt import WhisperSTTService, Model
 from pipecat.services.kokoro.tts import KokoroTTSService
+from pipecat.services.cartesia.tts import CartesiaTTSService, CartesiaTTSSettings
+from pipecat.services.deepgram.stt import DeepgramSTTService, DeepgramSTTSettings
 from pipecat.transcriptions.language import Language
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.workers.runner import WorkerRunner
@@ -21,19 +24,28 @@ from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, Fast
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.runner.utils import parse_telephony_websocket 
 
+load_dotenv()
 with open("system_prompt.txt", "r") as file:
     prompt = file.read()
 
 async def run_bot(transport: BaseTransport, handle_sigint: bool):
 
-    tts = KokoroTTSService(
-        settings=KokoroTTSService.Settings(voice='hf_alpha', language=Language.HI, extra={"speed": 1.3})
+    tts = CartesiaTTSService(
+        api_key=os.getenv("CARTESIA_API_KEY"),
+        settings=CartesiaTTSSettings(
+            model='sonic-3',
+            voice="95d51f79-c397-46f9-b49a-23763d3eaa2d",
+            language="hi"
+        ),
+        voice_id="95d51f79-c397-46f9-b49a-23763d3eaa2d",
     )
 
-    stt = WhisperSTTService(
-        compute_type="int8",
-        device="auto",
-        model=Model.SMALL,
+    stt = DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        settings=DeepgramSTTSettings(
+            model="base",
+            language="hi"
+        )
     )
 
     llm = OLLamaLLMService(settings=OLLamaLLMService.Settings(
@@ -49,7 +61,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(
                 sample_rate=8000,
-                params=VADParams(confidence=0.6)
+                params=VADParams(confidence=0.7)
             ),
             user_turn_strategies=UserTurnStrategies(stop=[])
         )
