@@ -17,12 +17,14 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.runner.types import RunnerArguments
-from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.transports.base_transport import BaseTransport
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.runner.utils import parse_telephony_websocket 
+
+from pipecat_flows import FlowManager
+from flows.weather_info_flow import create_initial_node
 
 load_dotenv()
 with open("system_prompt.txt", "r") as file:
@@ -43,27 +45,25 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         settings=DeepgramSTTSettings(
-            model="enhanced",
+            model="nova-2",
             language="hi"
         )
     )
 
     llm = OLLamaLLMService(settings=OLLamaLLMService.Settings(
-        model="gemma4:e2b",
-        temperature=0,
-        system_instruction=prompt
+        model="granite4.1:8b",
+        temperature=0
     ))
 
     context = LLMContext()
     
-    user, assistant = LLMContextAggregatorPair(
+    context_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(
                 sample_rate=8000,
                 params=VADParams(confidence=0.7)
-            ),
-            user_turn_strategies=UserTurnStrategies(stop=[])
+            )
         )
     )
 
@@ -71,11 +71,11 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
         [
             transport.input(),
             stt,
-            user,
+            context_aggregator.user(),
             llm,
             tts,
             transport.output(),
-            assistant
+            context_aggregator.assistant()
         ],
     )
 
@@ -87,15 +87,22 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
             audio_out_sample_rate=8000,
             enable_metrics=True,
             enable_usage_metrics=True
-        ),
-        
+        ),        
+    )
+
+    flow_manager = FlowManager(
+        worker=agent,
+        llm=llm,
+        context_aggregator=context_aggregator,
+        transport=transport
     )
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         from pipecat.frames.frames import TTSSpeakFrame
         logger.info("Starting outbound call conversation")
-        await agent.queue_frames([TTSSpeakFrame("नमस्ते! मैं अनुष्का बोल रही हूँ।")])
+        await flow_manager.initialize(create_initial_node())
+        # await agent.queue_frames([TTSSpeakFrame("ओए, मैं अनुष्का बोल रही हूँ। दो मिनट हैं तेरे पास या फिर बेकार ही बैठा है?")])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
@@ -118,7 +125,7 @@ async def bot(runner_args: RunnerArguments):
     to_number = body_data.get("to_number")
     from_number = body_data.get("from_number")
 
-    logger.info(f"Call Metadat: To - {to_number}    From - {from_number}")
+    logger.info(f"Call Metadata: To - {to_number}    From - {from_number}")
 
     serializer = TwilioFrameSerializer(
         account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
