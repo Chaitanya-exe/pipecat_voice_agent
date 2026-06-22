@@ -11,3 +11,4 @@ wheels/
 
 # api keys 
 .env
+*.txt

@@ -3,12 +3,9 @@ from loguru import logger
 from dotenv import load_dotenv
 
 from pipecat.pipeline.pipeline import Pipeline
-from pipecat.services.ollama.llm import OLLamaLLMService
-from pipecat.services.whisper.stt import WhisperSTTService, Model
-from pipecat.services.kokoro.tts import KokoroTTSService
+from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.cartesia.tts import CartesiaTTSService, CartesiaTTSSettings
 from pipecat.services.deepgram.stt import DeepgramSTTService, DeepgramSTTSettings
-from pipecat.transcriptions.language import Language
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.workers.runner import WorkerRunner
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
@@ -24,10 +21,10 @@ from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.runner.utils import parse_telephony_websocket 
 
 from pipecat_flows import FlowManager
-from flows.weather_info_flow import create_initial_node
+from flows.property_inquiry import create_initial_node
 
 load_dotenv()
-with open("system_prompt.txt", "r") as file:
+with open("angry_girlfriend.txt", "r") as file:
     prompt = file.read()
 
 async def run_bot(transport: BaseTransport, handle_sigint: bool):
@@ -50,10 +47,13 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
         )
     )
 
-    llm = OLLamaLLMService(settings=OLLamaLLMService.Settings(
-        model="granite4.1:8b",
-        temperature=0
-    ))
+    llm = OpenAILLMService(
+        api_key=os.getenv("LLM_API"),
+        model='gpt-4',
+        settings=OpenAILLMService.Settings(
+            temperature=0
+        )
+    )
 
     context = LLMContext()
     
@@ -99,9 +99,11 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
-        from pipecat.frames.frames import TTSSpeakFrame
         logger.info("Starting outbound call conversation")
-        await flow_manager.initialize(create_initial_node())
+        flow_manager.state.update({
+            "name": "Aditya Solanki"
+        })
+        await flow_manager.initialize(create_initial_node(name=flow_manager.state.get('name')))
         # await agent.queue_frames([TTSSpeakFrame("ओए, मैं अनुष्का बोल रही हूँ। दो मिनट हैं तेरे पास या फिर बेकार ही बैठा है?")])
 
     @transport.event_handler("on_client_disconnected")
