@@ -55,7 +55,7 @@ def create_inquiry_node() -> NodeConfig:
         }
     )
 
-    NodeConfig(
+    return NodeConfig(
         name="Inquiry Node",
         task_messages=[
             {
