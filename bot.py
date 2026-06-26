@@ -27,7 +27,7 @@ load_dotenv()
 with open("angry_girlfriend.txt", "r") as file:
     prompt = file.read()
 
-async def run_bot(transport: BaseTransport, handle_sigint: bool):
+async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str):
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
@@ -101,7 +101,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
     async def on_client_connected(transport, client):
         logger.info("Starting outbound call conversation")
         flow_manager.state.update({
-            "name": "Aditya Solanki"
+            "name": name if name else "no_name"
         })
         await flow_manager.initialize(create_initial_node(name=flow_manager.state.get('name')))
         # await agent.queue_frames([TTSSpeakFrame("ओए, मैं अनुष्का बोल रही हूँ। दो मिनट हैं तेरे पास या फिर बेकार ही बैठा है?")])
@@ -126,8 +126,9 @@ async def bot(runner_args: RunnerArguments):
     body_data = call_data.get("body", {})
     to_number = body_data.get("to_number")
     from_number = body_data.get("from_number")
+    name = body_data.get("name")
 
-    logger.info(f"Call Metadata: To - {to_number}    From - {from_number}")
+    logger.info(f"Call Metadata: To - {to_number}    From - {from_number}       Name - {name}")
 
     serializer = TwilioFrameSerializer(
         account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
@@ -148,4 +149,4 @@ async def bot(runner_args: RunnerArguments):
 
     handle_sigint = runner_args.handle_sigint
 
-    await run_bot(transport=transport, handle_sigint=handle_sigint)
+    await run_bot(transport=transport, handle_sigint=handle_sigint, name=name)

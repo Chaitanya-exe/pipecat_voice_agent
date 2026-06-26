@@ -12,3 +12,4 @@ wheels/
 # api keys 
 .env
 *.txt
+*.json
