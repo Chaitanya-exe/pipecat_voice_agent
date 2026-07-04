@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.google.llm import GoogleLLMService
 from pipecat.services.cartesia.tts import CartesiaTTSService, CartesiaTTSSettings
 from pipecat.services.deepgram.stt import DeepgramSTTService, DeepgramSTTSettings
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
@@ -47,12 +48,21 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str):
         )
     )
 
-    llm = OpenAILLMService(
-        api_key=os.getenv("LLM_API"),
-        model='gpt-4',
-        settings=OpenAILLMService.Settings(
-            temperature=0
-        )
+    # llm = OpenAILLMService(
+    #     api_key=os.getenv("LLM_API"),
+    #     model='gpt-4',
+    #     settings=OpenAILLMService.Settings(
+    #         temperature=0
+    #     )
+    # )
+
+    llm = GoogleLLMService(
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        settings=GoogleLLMService.Settings(
+            temperature=0,
+            thinking=False,
+            model='gemini-3.1-flash-lite',
+        ),
     )
 
     context = LLMContext()
