@@ -16,6 +16,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.runner.types import RunnerArguments
+from pipecat.runner.utils import create_transport
 from pipecat.transports.base_transport import BaseTransport
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.serializers.twilio import TwilioFrameSerializer
@@ -28,7 +29,7 @@ load_dotenv()
 with open("angry_girlfriend.txt", "r") as file:
     prompt = file.read()
 
-async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str):
+async def run_bot(transport: BaseTransport, handle_sigint: bool):
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
@@ -110,9 +111,6 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info("Starting outbound call conversation")
-        flow_manager.state.update({
-            "name": name if name else "no_name"
-        })
         await flow_manager.initialize(create_initial_node(name=flow_manager.state.get('name')))
         # await agent.queue_frames([TTSSpeakFrame("ओए, मैं अनुष्का बोल रही हूँ। दो मिनट हैं तेरे पास या फिर बेकार ही बैठा है?")])
 
@@ -127,7 +125,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str):
     await runner.run()
 
 
-async def bot(runner_args: RunnerArguments):
+async def twilio_phone_bot(runner_args: RunnerArguments):
     """Main entry point for the Voice Agent"""
     
     transport_type, call_data = await parse_telephony_websocket(runner_args.websocket)
@@ -160,3 +158,21 @@ async def bot(runner_args: RunnerArguments):
     handle_sigint = runner_args.handle_sigint
 
     await run_bot(transport=transport, handle_sigint=handle_sigint, name=name)
+
+async def bot(runner_args: RunnerArguments):
+
+    transport_params = {
+        "exotel": lambda: FastAPIWebsocketParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True
+        )
+    }
+
+    transport = await create_transport(transport_params=transport_params, runner_args=runner_args)
+
+    await run_bot(transport, runner_args.handle_sigint)
+
+
+if __name__ == '__main__':
+    from pipecat.runner.run import main
+    main()
