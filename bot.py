@@ -26,10 +26,10 @@ from pipecat_flows import FlowManager
 from flows.property_inquiry import create_initial_node
 
 load_dotenv()
-with open("angry_girlfriend.txt", "r") as file:
+with open("sales_agent.txt", "r") as file:
     prompt = file.read()
 
-async def run_bot(transport: BaseTransport, handle_sigint: bool):
+async def run_bot(transport: BaseTransport, handle_sigint: bool, name: str | None = ""):
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
@@ -63,6 +63,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
             temperature=0,
             thinking=False,
             model='gemini-3.1-flash-lite',
+            system_instruction=prompt
         ),
     )
 
@@ -107,7 +108,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool):
         context_aggregator=context_aggregator,
         transport=transport
     )
-
+    flow_manager.state['name'] = name
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info("Starting outbound call conversation")

@@ -43,7 +43,7 @@ async def get_twiml(request: Request) -> HTMLResponse:
 
 @app.websocket("/ws")
 async def handle_websocket(socket: WebSocket):
-    from bot import bot
+    from bot import bot, twilio_phone_bot
     from pipecat.runner.types import WebSocketRunnerArguments
 
     await socket.accept()
@@ -51,7 +51,7 @@ async def handle_websocket(socket: WebSocket):
 
     try:
         runner_args = WebSocketRunnerArguments(websocket=socket)
-        await bot(runner_args=runner_args)
+        await twilio_phone_bot(runner_args=runner_args)
     except Exception as e:
         logger.error(f"Error on websocket endpoint: {str(e)}") 
         await socket.close()
